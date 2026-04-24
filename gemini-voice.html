@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gemini 语音对话</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07070f;
+      --surface: #10101c;
+      --border: #1c1c2e;
+      --text: #e2e2f0;
+      --text-dim: #55556a;
+      --cyan: #00d4ff;
+      --purple: #a855f7;
+      --blue: #4f8dff;
+      --green: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 20px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .header {
+      width: 100%;
+      padding: 18px 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #2a2a3e;
+      transition: background 0.4s, box-shadow 0.4s;
+    }
+    .dot.on { background: var(--green); box-shadow: 0 0 8px #22c55e99; }
+
+    /* ── HTTPS warning ── */
+    .warn {
+      width: 100%;
+      background: #1a1000;
+      border: 1px solid #443300;
+      border-radius: 10px;
+      padding: 9px 13px;
+      font-size: 12px;
+      color: #cc8833;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+
+    /* ── API Key row ── */
+    .key-row {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .key-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+    .key-input:focus { border-color: #2a4aaa; }
+    .key-input::placeholder { color: var(--text-dim); }
+
+    .btn-connect {
+      background: var(--blue);
+      border: none;
+      border-radius: 10px;
+      padding: 11px 18px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .btn-connect:active { opacity: 0.8; transform: scale(0.97); }
+    .btn-connect.off { background: #552222; }
+
+    /* ── Orb area ── */
+    .orb-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+
+    .orb-wrap {
+      position: relative;
+      width: 154px; height: 154px;
+    }
+
+    /* outer glow rings */
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      transition: border-color 0.6s;
+    }
+    .ring-1 { inset: -20px; }
+    .ring-2 { inset: -38px; }
+
+    .ring-1.glow-listen { border-color: #00d4ff28; animation: spin 3s linear infinite; }
+    .ring-2.glow-listen { border-color: #00d4ff12; animation: spin 6s linear infinite reverse; }
+    .ring-1.glow-speak  { border-color: #a855f728; animation: spin 3s linear infinite; }
+    .ring-2.glow-speak  { border-color: #a855f712; animation: spin 6s linear infinite reverse; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* orb itself */
+    .orb {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 36%, #181832, #08080f);
+      box-shadow: 0 0 24px #12124088, inset 0 0 24px #0a0a1a;
+      transition: box-shadow 0.5s, background 0.5s;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      position: relative; z-index: 2;
+    }
+
+    .orb.listen {
+      background: radial-gradient(circle at 38% 36%, #002255, #001030);
+      box-shadow: 0 0 55px #00d4ff55, 0 0 110px #00d4ff1a, inset 0 0 35px #003366;
+      animation: breathe 1.8s ease-in-out infinite;
+    }
+    .orb.speak {
+      background: radial-gradient(circle at 38% 36%, #38006a, #1a0030);
+      box-shadow: 0 0 55px #a855f755, 0 0 110px #a855f71a, inset 0 0 35px #500080;
+    }
+
+    @keyframes breathe {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.045); }
+    }
+
+    .mic-icon {
+      color: #3a3a5e;
+      transition: color 0.4s;
+      pointer-events: none;
+    }
+    .orb.listen .mic-icon { color: var(--cyan); }
+    .orb.speak  .mic-icon { color: var(--purple); }
+
+    .orb-label {
+      font-size: 13px;
+      color: var(--text-dim);
+      letter-spacing: 0.02em;
+      text-align: center;
+      transition: color 0.3s;
+      min-height: 20px;
+    }
+    .orb-label.bright { color: #aaaac0; }
+
+    /* ── Talk toggle button ── */
+    .mic-btn {
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text-dim);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .mic-btn:active { transform: scale(0.93); }
+    .mic-btn.on {
+      border-color: var(--cyan);
+      background: #00d4ff10;
+      box-shadow: 0 0 18px #00d4ff30;
+    }
+    .mic-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* ── Transcript ── */
+    .chat {
+      width: 100%;
+      flex-shrink: 0;
+      height: 190px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 8px 0 0;
+    }
+    .chat::-webkit-scrollbar { display: none; }
+
+    .bubble {
+      max-width: 88%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      animation: pop 0.25s ease;
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .bubble.user {
+      align-self: flex-end;
+      background: #182044;
+      color: #96bcff;
+      border-bottom-right-radius: 3px;
+    }
+    .bubble.model {
+      align-self: flex-start;
+      background: var(--surface);
+      color: var(--text);
+      border-bottom-left-radius: 3px;
+    }
+    .bubble-who {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .pad { height: 16px; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <span class="brand">Gemini · Live</span>
+    <div class="status-pill">
+      <div class="dot" id="dot"></div>
+      <span id="connLabel">未连接</span>
+    </div>
+  </div>
+
+  <div class="warn" id="warnEl" style="display:none">
+    ⚠️ 麦克风需要 <strong>HTTPS</strong> 才能使用。请将此文件部署到支持 HTTPS 的平台（如 GitHub Pages），或在本地用 <code>localhost</code> 打开。
+  </div>
+
+  <div class="key-row">
+    <input class="key-input" id="apiKey" type="password"
+      placeholder="粘贴 Gemini API Key…" autocomplete="off" spellcheck="false">
+    <button class="btn-connect" id="connBtn" onclick="toggleConnect()">连接</button>
+  </div>
+
+  <div class="orb-area">
+    <div class="orb-wrap">
+      <div class="ring ring-2" id="ring2"></div>
+      <div class="ring ring-1" id="ring1"></div>
+      <div class="orb" id="orb" onclick="handleOrbClick()">
+        <svg class="mic-icon" id="micSvg" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" x2="12" y1="19" y2="22"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="orb-label" id="orbLabel">输入 API Key 后点击连接</div>
+
+    <button class="mic-btn" id="micBtn" disabled onclick="toggleTalk()">🎙</button>
+  </div>
+
+  <div class="chat" id="chat"></div>
+  <div class="pad"></div>
+</div>
+
+<script>
+'use strict';
+
+// ─── Globals ──────────────────────────────────────────────────────────────
+let ws          = null;
+let audioCtx    = null;
+let micStream   = null;
+let srcNode     = null;
+let procNode    = null;
+let listening   = false;
+let connected   = false;
+let nextTime    = 0;
+
+const IN_RATE   = 16000;
+const OUT_RATE  = 24000;
+const MODEL     = 'gemini-3.1-flash-live-preview';
+
+// ─── DOM ──────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const orb      = $('orb');
+const ring1    = $('ring1');
+const ring2    = $('ring2');
+const orbLabel = $('orbLabel');
+const dot      = $('dot');
+const connLbl  = $('connLabel');
+const connBtn  = $('connBtn');
+const micBtn   = $('micBtn');
+const chat     = $('chat');
+
+// HTTPS check
+if (location.protocol !== 'https:' &&
+    location.hostname !== 'localhost' &&
+    location.hostname !== '127.0.0.1') {
+  $('warnEl').style.display = 'block';
+}
+
+// ─── Connect / Disconnect ─────────────────────────────────────────────────
+async function toggleConnect() {
+  if (connected) { doDisconnect(); return; }
+
+  const key = $('apiKey').value.trim();
+  if (!key) { setLabel('请先输入 API Key'); return; }
+
+  setLabel('正在连接…');
+
+  const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
+
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({
+      setup: {
+        model: `models/${MODEL}`,
+        generation_config: {
+          response_modalities: ['AUDIO'],
+          speech_config: {
+            voice_config: { prebuilt_voice_config: { voice_name: 'Aoede' } }
+          }
+        },
+        system_instruction: {
+          parts: [{ text: '你是一个友好自然的语音助手，请用简洁口语化的中文回答，像真实对话一样。' }]
+        },
+        input_audio_transcription:  {},
+        output_audio_transcription: {}
+      }
+    }));
+  };
+
+  ws.onmessage = onMessage;
+  ws.onerror   = () => { setLabel('连接出错，请检查 API Key'); doDisconnect(); };
+  ws.onclose   = () => { if (connected) { setLabel('连接已断开'); doDisconnect(); } };
+}
+
+function doDisconnect() {
+  if (ws) { try { ws.close(); } catch(_){} ws = null; }
+  stopMic();
+  connected = false;
+  listening = false;
+  dot.className = 'dot';
+  connLbl.textContent = '未连接';
+  connBtn.textContent = '连接';
+  connBtn.classList.remove('off');
+  micBtn.disabled = true;
+  micBtn.classList.remove('on');
+  setOrbState('idle');
+  setLabel('输入 API Key 后点击连接');
+}
+
+function onConnected() {
+  connected = true;
+  dot.className = 'dot on';
+  connLbl.textContent = '已连接';
+  connBtn.textContent = '断开';
+  connBtn.classList.add('off');
+  micBtn.disabled = false;
+  setLabel('点击麦克风开始说话');
+}
+
+// ─── Message Handling ─────────────────────────────────────────────────────
+async function onMessage(evt) {
+  let txt = evt.data instanceof Blob ? await evt.data.text() : evt.data;
+  let msg;
+  try { msg = JSON.parse(txt); } catch { return; }
+
+  if (msg.setupComplete !== undefined) { onConnected(); return; }
+
+  const sc = msg.serverContent;
+  if (!sc) return;
+
+  // Audio chunks
+  if (sc.modelTurn?.parts) {
+    for (const p of sc.modelTurn.parts) {
+      if (p.inlineData?.mimeType?.includes('audio')) {
+        setOrbState('speak');
+        playPCM(p.inlineData.data);
+      }
+    }
+  }
+
+  // Transcripts
+  if (sc.outputTranscription?.text) addBubble('model', sc.outputTranscription.text);
+  if (sc.inputTranscription?.text)  addBubble('user',  sc.inputTranscription.text);
+
+  // Turn done
+  if (sc.turnComplete) {
+    setTimeout(() => { if (!listening) setOrbState('idle'); }, 400);
+  }
+}
+
+// ─── Playback ─────────────────────────────────────────────────────────────
+function playPCM(b64) {
+  if (!audioCtx) return;
+  const bin = atob(b64);
+  const u8  = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  const i16  = new Int16Array(u8.buffer);
+  const f32  = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+
+  const buf = audioCtx.createBuffer(1, f32.length, OUT_RATE);
+  buf.getChannelData(0).set(f32);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination);
+  const now   = audioCtx.currentTime;
+  const start = Math.max(now, nextTime);
+  src.start(start);
+  nextTime = start + buf.duration;
+}
+
+// ─── Microphone ───────────────────────────────────────────────────────────
+function handleOrbClick() {
+  if (!connected) return;
+  toggleTalk();
+}
+
+async function toggleTalk() {
+  if (!connected) return;
+  if (listening) {
+    stopMic();
+    setOrbState('idle');
+    micBtn.classList.remove('on');
+    setLabel('点击麦克风开始说话');
+  } else {
+    await startMic();
+  }
+}
+
+async function startMic() {
+  try {
+    // iOS requires AudioContext after user gesture
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    nextTime = 0;
+
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }
+    });
+
+    srcNode  = audioCtx.createMediaStreamSource(micStream);
+    procNode = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    procNode.onaudioprocess = e => {
+      if (!listening || ws?.readyState !== WebSocket.OPEN) return;
+      const raw = e.inputBuffer.getChannelData(0);
+      const pcm = downsample(raw, audioCtx.sampleRate, IN_RATE);
+      ws.send(JSON.stringify({
+        realtimeInput: {
+          mediaChunks: [{ mimeType: `audio/pcm;rate=${IN_RATE}`, data: toBase64(pcm.buffer) }]
+        }
+      }));
+    };
+
+    srcNode.connect(procNode);
+    procNode.connect(audioCtx.destination); // required for onaudioprocess to fire
+
+    listening = true;
+    micBtn.classList.add('on');
+    setOrbState('listen');
+    setLabel('正在聆听…');
+
+  } catch (err) {
+    const msg = err.name === 'NotAllowedError'
+      ? '请允许麦克风权限后重试'
+      : '麦克风启动失败：' + err.message;
+    setLabel(msg);
+    console.error(err);
+  }
+}
+
+function stopMic() {
+  listening = false;
+  if (procNode) { procNode.disconnect(); procNode = null; }
+  if (srcNode)  { srcNode.disconnect();  srcNode  = null; }
+  if (micStream){ micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+}
+
+// ─── Audio Utils ──────────────────────────────────────────────────────────
+function downsample(f32, from, to) {
+  if (from === to) {
+    const out = new Int16Array(f32.length);
+    for (let i = 0; i < f32.length; i++) {
+      out[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32767)));
+    }
+    return out;
+  }
+  const ratio = from / to;
+  const len   = Math.ceil(f32.length / ratio);
+  const out   = new Int16Array(len);
+  for (let i = 0; i < len; i++) {
+    const idx = Math.min(Math.round(i * ratio), f32.length - 1);
+    out[i] = Math.max(-32768, Math.min(32767, Math.round(f32[idx] * 32767)));
+  }
+  return out;
+}
+
+function toBase64(buf) {
+  const bytes = new Uint8Array(buf);
+  let s = '', chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(s);
+}
+
+// ─── UI ───────────────────────────────────────────────────────────────────
+function setOrbState(state) {
+  orb.className   = 'orb'   + (state === 'listen' ? ' listen' : state === 'speak' ? ' speak' : '');
+  ring1.className = 'ring ring-1' + (state === 'listen' ? ' glow-listen' : state === 'speak' ? ' glow-speak' : '');
+  ring2.className = 'ring ring-2' + (state === 'listen' ? ' glow-listen' : state === 'speak' ? ' glow-speak' : '');
+}
+
+function setLabel(t) {
+  orbLabel.textContent = t;
+  orbLabel.className = 'orb-label' + (t !== '输入 API Key 后点击连接' ? ' bright' : '');
+}
+
+let lastBubbleRole = null;
+
+function addBubble(role, text) {
+  // Update existing bubble if same role continues
+  const last = chat.querySelector('.bubble:last-child');
+  if (last?.dataset.role === role) {
+    last.querySelector('.bubble-text').textContent = text;
+  } else {
+    const d = document.createElement('div');
+    d.className = `bubble ${role}`;
+    d.dataset.role = role;
+    d.innerHTML = `<div class="bubble-who">${role === 'user' ? '你' : 'Gemini'}</div><div class="bubble-text">${esc(text)}</div>`;
+    chat.appendChild(d);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function esc(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Enter key on API key input
+$('apiKey').addEventListener('keydown', e => { if (e.key === 'Enter') toggleConnect(); });
+</script>
+</body>
+</html>
