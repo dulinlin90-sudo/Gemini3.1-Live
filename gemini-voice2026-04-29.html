@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>English Practice — Gemini Live</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0c0f18;
+    --surface: #141825;
+    --surface2: #1c2235;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #e8ecf4;
+    --text2: #8b92a8;
+    --text3: #555e78;
+    --accent: #4f8eff;
+    --accent-glow: rgba(79,142,255,0.15);
+    --ai: #34c98b;
+    --ai-bg: rgba(52,201,139,0.1);
+    --user: #ff7b4f;
+    --user-bg: rgba(255,123,79,0.1);
+    --red: #ff4f6a;
+    --yellow: #ffc94f;
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, #4f8eff, #34c98b);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .logo-text { font-size: 16px; font-weight: 700; letter-spacing: 0.02em; }
+  .logo-sub { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; margin-top: 1px; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  select {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+  select:hover { border-color: var(--accent); }
+
+  .btn-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text2); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px; transition: all .15s;
+  }
+  .btn-icon:hover { border-color: var(--border2); color: var(--text); }
+
+  /* ── Status Bar ── */
+  #status-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    flex-shrink: 0;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text3);
+    transition: background .3s;
+  }
+  .status-dot.connecting { background: var(--yellow); animation: pulse 1s infinite; }
+  .status-dot.connected { background: var(--ai); }
+  .status-dot.recording { background: var(--user); animation: pulse .7s infinite; }
+  .status-dot.error { background: var(--red); }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.3 } }
+
+  /* ── Main Layout ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── Transcript Panel ── */
+  .transcript-panel {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  .transcript {
+    flex: 1; overflow-y: auto; padding: 24px;
+    display: flex; flex-direction: column; gap: 16px;
+    scroll-behavior: smooth;
+  }
+  .transcript::-webkit-scrollbar { width: 4px; }
+  .transcript::-webkit-scrollbar-track { background: transparent; }
+  .transcript::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .message {
+    display: flex; gap: 12px; animation: fadeUp .3s ease;
+    max-width: 800px;
+  }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform:none; } }
+
+  .message.ai .avatar {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    background: var(--ai-bg); border: 1px solid rgba(52,201,139,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--ai);
+  }
+  .message.user .avatar {
+    width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+    background: var(--user-bg); border: 1px solid rgba(255,123,79,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--user);
+  }
+
+  .bubble { flex: 1; }
+  .bubble-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px;
+  }
+  .bubble-name { font-size: 12px; font-weight: 500; }
+  .message.ai .bubble-name { color: var(--ai); }
+  .message.user .bubble-name { color: var(--user); }
+  .bubble-time { font-size: 11px; color: var(--text3); font-family: 'IBM Plex Mono', monospace; }
+
+  .bubble-text {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--text);
+  }
+  .message.ai .bubble-text { border-radius: 4px 12px 12px 12px; }
+  .message.user .bubble-text { border-radius: 12px 4px 12px 12px; }
+
+  .bubble-text.streaming::after {
+    content: '▋';
+    animation: blink .7s infinite;
+    color: var(--ai);
+  }
+  @keyframes blink { 0%,100% { opacity:1 } 50% { opacity:0 } }
+
+  /* Corrections / feedback */
+  .correction {
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(255,201,79,0.06);
+    border: 1px solid rgba(255,201,79,0.2);
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #d4a843;
+  }
+  .correction strong { color: var(--yellow); font-weight: 500; }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: 16px; text-align: center; padding: 40px;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+  .empty-title { font-size: 20px; font-weight: 700; color: var(--text2); }
+  .empty-desc { font-size: 14px; color: var(--text3); max-width: 320px; line-height: 1.6; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .sidebar-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text3);
+    margin-bottom: 12px;
+  }
+
+  .tip-card {
+    background: var(--surface2);
+    border-radius: 8px; padding: 10px 12px;
+    font-size: 13px; color: var(--text2);
+    line-height: 1.5; margin-bottom: 8px;
+  }
+  .tip-card:last-child { margin-bottom: 0; }
+  .tip-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+  .tip-label.topic { color: var(--accent); }
+  .tip-label.phrase { color: var(--ai); }
+  .tip-label.vocab { color: var(--yellow); }
+
+  .topic-btn {
+    width: 100%; text-align: left; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--text2);
+    border-radius: 8px; padding: 9px 12px;
+    font-size: 13px; cursor: pointer; transition: all .15s;
+    margin-bottom: 6px; font-family: 'Syne', sans-serif;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .topic-btn:hover { border-color: var(--accent); color: var(--text); background: var(--accent-glow); }
+  .topic-btn:last-child { margin-bottom: 0; }
+
+  .level-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .level-badge.a { background: rgba(52,201,139,0.15); color: var(--ai); }
+  .level-badge.b { background: rgba(79,142,255,0.15); color: var(--accent); }
+  .level-badge.c { background: rgba(255,123,79,0.15); color: var(--user); }
+
+  /* ── Controls ── */
+  .controls {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; gap: 12px;
+    flex-shrink: 0;
+  }
+
+  #mic-btn {
+    width: 52px; height: 52px; border-radius: 50%; border: none;
+    background: var(--surface2); border: 2px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 22px; transition: all .2s;
+    flex-shrink: 0; position: relative;
+  }
+  #mic-btn:hover { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-glow); }
+  #mic-btn.recording {
+    background: rgba(255,123,79,0.15);
+    border-color: var(--user);
+    box-shadow: 0 0 0 6px rgba(255,123,79,0.15);
+    animation: mic-pulse 1s infinite;
+  }
+  #mic-btn.disabled { opacity: 0.4; cursor: not-allowed; }
+  @keyframes mic-pulse { 0%,100% { box-shadow: 0 0 0 4px rgba(255,123,79,0.15); } 50% { box-shadow: 0 0 0 8px rgba(255,123,79,0.05); } }
+
+  .waveform {
+    flex: 1; height: 52px; position: relative;
+    display: flex; align-items: center; gap: 2px; padding: 8px 0;
+  }
+  .wave-bar {
+    flex: 1; border-radius: 2px; background: var(--border2);
+    transition: height .08s ease;
+    min-height: 3px;
+  }
+
+  .controls-right { display: flex; gap: 8px; }
+
+  #send-text-area {
+    flex: 1; resize: none; background: var(--surface2);
+    border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 12px 14px;
+    font-family: 'Syne', sans-serif; font-size: 14px;
+    outline: none; line-height: 1.4; height: 52px;
+    display: none;
+  }
+  #send-text-area:focus { border-color: var(--accent); }
+  #send-text-area::placeholder { color: var(--text3); }
+
+  .btn-primary {
+    padding: 0 20px; height: 40px; border-radius: 10px;
+    background: var(--accent); color: #fff; border: none;
+    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 500;
+    cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn-primary:hover { background: #6a9fff; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .input-mode-toggle {
+    display: flex; gap: 4px;
+  }
+  .mode-btn {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text3); cursor: pointer; font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .15s;
+  }
+  .mode-btn.active { background: var(--surface2); border-color: var(--border2); color: var(--text); }
+  .mode-btn:hover { color: var(--text); }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; backdrop-filter: blur(4px);
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 16px; padding: 32px; width: 420px;
+    max-width: calc(100vw - 32px);
+  }
+  .modal h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .modal p { font-size: 14px; color: var(--text2); margin-bottom: 24px; line-height: 1.6; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; letter-spacing: 0.04em; }
+  .field input, .field select {
+    width: 100%; padding: 10px 14px; border-radius: 8px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 13px; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  .btn-ghost {
+    padding: 0 16px; height: 38px; border-radius: 8px;
+    background: transparent; border: 1px solid var(--border2);
+    color: var(--text2); cursor: pointer; font-family: 'Syne', sans-serif;
+    font-size: 14px; transition: all .15s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text2); }
+
+  .api-link { color: var(--accent); text-decoration: none; }
+  .api-link:hover { text-decoration: underline; }
+
+  /* ── Voice indicator ── */
+  .voice-orb {
+    display: none;
+    width: 120px; height: 120px; border-radius: 50%;
+    margin: 0 auto 16px;
+    background: radial-gradient(circle, rgba(52,201,139,0.3) 0%, transparent 70%);
+    border: 2px solid rgba(52,201,139,0.4);
+    animation: orb-pulse 1.5s infinite;
+    align-items: center; justify-content: center;
+    font-size: 40px;
+  }
+  @keyframes orb-pulse {
+    0%,100% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.06); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- API Key Modal -->
+<div class="modal-backdrop" id="api-modal">
+  <div class="modal">
+    <h2>🎙️ 英语口语练习</h2>
+    <p>输入你的 Google Gemini API Key 即可开始与 AI 进行英语对话练习。<br>
+    <a class="api-link" href="https://aistudio.google.com/app/apikey" target="_blank">→ 免费获取 API Key</a></p>
+    <div class="field">
+      <label>GEMINI API KEY</label>
+      <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>模型</label>
+      <select id="modal-model">
+        <option value="models/gemini-3.1-flash-live-preview">Gemini 3.1 Flash Live (最新推荐)</option>
+        <option value="models/gemini-2.5-flash-native-audio-preview-12-2025">Gemini 2.5 Flash Native Audio (旧版备用)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>英语水平</label>
+      <select id="modal-level">
+        <option value="beginner">初学者 / Beginner (A1-A2)</option>
+        <option value="intermediate" selected>中级 / Intermediate (B1-B2)</option>
+        <option value="advanced">高级 / Advanced (C1-C2)</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="loadSavedKey()">使用已保存的Key</button>
+      <button class="btn-primary" onclick="startSession()">开始练习 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Main App -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🎙</div>
+    <div>
+      <div class="logo-text">English Live Practice</div>
+      <div class="logo-sub">powered by Gemini</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <select id="voice-select" title="AI语音">
+      <option value="Aoede">Aoede (女声)</option>
+      <option value="Puck">Puck (男声)</option>
+      <option value="Charon">Charon (男声深沉)</option>
+      <option value="Fenrir">Fenrir (男声)</option>
+      <option value="Kore">Kore (女声)</option>
+    </select>
+    <div class="btn-icon" title="设置" onclick="openSettings()">⚙</div>
+    <div class="btn-icon" title="清空对话" onclick="clearTranscript()">🗑</div>
+  </div>
+</header>
+
+<div id="status-bar">
+  <div class="status-dot" id="status-dot"></div>
+  <span id="status-text">未连接 — 请先输入 API Key</span>
+</div>
+
+<div class="main">
+  <!-- Transcript -->
+  <div class="transcript-panel">
+    <div class="transcript" id="transcript">
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🗣</div>
+        <div class="empty-title">准备好练习英语了吗？</div>
+        <div class="empty-desc">点击下方麦克风按钮开始说话，AI 会实时回应并纠正你的语法错误。</div>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="input-mode-toggle">
+        <button class="mode-btn active" id="voice-mode-btn" title="语音模式" onclick="setMode('voice')">🎙</button>
+        <button class="mode-btn" id="text-mode-btn" title="文字模式" onclick="setMode('text')">⌨</button>
+      </div>
+
+      <button id="mic-btn" class="disabled" onclick="toggleMic()" title="按住说话 / 点击开始">
+        🎙
+      </button>
+
+      <div class="waveform" id="waveform">
+        <!-- bars filled by JS -->
+      </div>
+
+      <textarea id="send-text-area" placeholder="Type in English... (Shift+Enter换行, Enter发送)" rows="1"></textarea>
+
+      <div class="controls-right">
+        <button class="btn-primary" id="connect-btn" onclick="connect()">连接</button>
+        <button class="btn-primary" id="send-btn" onclick="sendText()" style="display:none">发送</button>
+        <button class="btn-ghost" id="disconnect-btn" onclick="disconnect()" style="display:none">断开</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">话题建议</div>
+      <button class="topic-btn" onclick="startTopic('self-intro')">👤 自我介绍</button>
+      <button class="topic-btn" onclick="startTopic('daily-life')">☀️ 日常生活</button>
+      <button class="topic-btn" onclick="startTopic('travel')">✈️ 旅游计划</button>
+      <button class="topic-btn" onclick="startTopic('work')">💼 职场英语</button>
+      <button class="topic-btn" onclick="startTopic('news')">📰 时事讨论</button>
+      <button class="topic-btn" onclick="startTopic('debate')">⚡ 即兴辩论</button>
+      <button class="topic-btn" onclick="startTopic('storytelling')">📖 讲故事</button>
+      <button class="topic-btn" onclick="startTopic('interview')">🤝 面试练习</button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">常用口语句型</div>
+      <div class="tip-card">
+        <div class="tip-label phrase">表达观点</div>
+        "In my opinion..." / "From my perspective..." / "I tend to think..."
+      </div>
+      <div class="tip-card">
+        <div class="tip-label phrase">表示不确定</div>
+        "I'm not entirely sure, but..." / "If I'm not mistaken..."
+      </div>
+      <div class="tip-card">
+        <div class="tip-label phrase">要求澄清</div>
+        "Could you elaborate on that?" / "What do you mean by...?"
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">使用提示</div>
+      <div class="tip-card">
+        <div class="tip-label topic">实时纠错</div>
+        AI 会在对话中自然地纠正你的语法和用词错误
+      </div>
+      <div class="tip-card">
+        <div class="tip-label vocab">打断AI</div>
+        说话时会自动打断 AI，模拟真实对话
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════
+let ws = null;
+let apiKey = '';
+let model = 'models/gemini-3.1-flash-live-preview';
+let level = 'intermediate';
+let isRecording = false;
+let isConnected = false;
+let inputMode = 'voice'; // 'voice' | 'text'
+
+let audioCtx = null;
+let micStream = null;
+let micSource = null;
+let scriptProcessor = null;
+
+// Playback queue
+let playbackQueue = [];
+let isPlaying = false;
+let currentPlaybackSampleRate = 24000;
+
+let currentAiMsgEl = null;
+let aiTextBuffer = '';
+
+// Waveform bars
+const NUM_BARS = 40;
+
+// ═══════════════════════════════════════════════════
+//  Init waveform
+// ═══════════════════════════════════════════════════
+function initWaveform() {
+  const wf = document.getElementById('waveform');
+  wf.innerHTML = '';
+  for (let i = 0; i < NUM_BARS; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'wave-bar';
+    bar.style.height = '3px';
+    wf.appendChild(bar);
+  }
+}
+initWaveform();
+
+// ═══════════════════════════════════════════════════
+//  System Prompts
+// ═══════════════════════════════════════════════════
+function getSystemPrompt() {
+  const levelMap = {
+    beginner: 'Speak slowly and clearly. Use simple vocabulary and short sentences. ',
+    intermediate: 'Use natural conversational English at a moderate pace. ',
+    advanced: 'Use sophisticated vocabulary, idioms, and complex sentence structures. Speak at a native speed. '
+  };
+  return `You are an engaging and encouraging English conversation practice partner for a Chinese learner.
+
+Your role:
+- Have natural, flowing conversations in English
+- ${levelMap[level]}
+- Gently and naturally correct grammar or vocabulary errors by restating the correct version in your response (don't interrupt the flow)
+- Ask follow-up questions to keep the conversation going
+- Use varied vocabulary and show enthusiasm
+- If the user says something in Chinese, kindly encourage them to try in English and provide a hint
+
+Keep responses concise (2-4 sentences) to maintain a natural dialogue pace. Be warm, patient, and positive.`;
+}
+
+// ═══════════════════════════════════════════════════
+//  Modal / Setup
+// ═══════════════════════════════════════════════════
+function loadSavedKey() {
+  const saved = localStorage.getItem('gemini_api_key');
+  if (saved) {
+    document.getElementById('api-key-input').value = saved;
+    setStatus('已加载保存的 API Key', '');
+  } else {
+    setStatus('没有找到保存的 Key', 'error');
+  }
+}
+
+function startSession() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key) { alert('请输入 API Key'); return; }
+  apiKey = key;
+  localStorage.setItem('gemini_api_key', key);
+  model = document.getElementById('modal-model').value;
+  level = document.getElementById('modal-level').value;
+  document.getElementById('api-modal').style.display = 'none';
+  setStatus('已配置，点击"连接"开始', '');
+  document.getElementById('mic-btn').classList.remove('disabled');
+}
+
+function openSettings() {
+  document.getElementById('api-modal').style.display = 'flex';
+}
+
+// ═══════════════════════════════════════════════════
+//  Status helpers
+// ═══════════════════════════════════════════════════
+function setStatus(text, state) {
+  document.getElementById('status-text').textContent = text;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot' + (state ? ' ' + state : '');
+}
+
+// ═══════════════════════════════════════════════════
+//  WebSocket / Gemini Live
+// ═══════════════════════════════════════════════════
+function connect() {
+  if (!apiKey) { openSettings(); return; }
+  if (ws) { ws.close(); }
+
+  const voiceName = document.getElementById('voice-select').value;
+  setStatus('正在连接...', 'connecting');
+
+  // v1beta required for gemini-3.1+; v1alpha for older models
+  const isNewModel = model.includes('3.1') || model.includes('3-flash');
+  const apiVersion = isNewModel ? 'v1beta' : 'v1alpha';
+  const url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.${apiVersion}.GenerativeService.BidiGenerateContent?key=${apiKey}`;
+
+  console.log('[Gemini Live] Connecting, model:', model, 'apiVersion:', apiVersion);
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    console.log('[Gemini Live] WebSocket opened, sending setup...');
+    // Native audio models only support AUDIO modality (not TEXT).
+    // Use output_audio_transcription to still receive text transcripts.
+    const setup = {
+      setup: {
+        model: model,
+        generation_config: {
+          response_modalities: ['AUDIO'],
+          speech_config: {
+            voice_config: {
+              prebuilt_voice_config: { voice_name: voiceName }
+            }
+          }
+        },
+        output_audio_transcription: {},
+        system_instruction: {
+          parts: [{ text: getSystemPrompt() }]
+        }
+      }
+    };
+    ws.send(JSON.stringify(setup));
+  };
+
+  ws.onmessage = async (evt) => {
+    let text;
+    // Server may send Blob (binary frame) instead of plain string
+    if (evt.data instanceof Blob) {
+      text = await evt.data.text();
+    } else {
+      text = evt.data;
+    }
+    let data;
+    try { data = JSON.parse(text); } catch (err) {
+      console.warn('[Gemini Live] Parse error:', err, 'raw:', text?.slice(0, 120)); return;
+    }
+    console.log('[Gemini Live] Msg:', JSON.stringify(data).slice(0, 300));
+    handleServerMessage(data);
+  };
+
+  ws.onerror = (e) => {
+    console.error('[Gemini Live] WebSocket error:', e);
+    setStatus('连接错误 — Key 无效或网络问题，按 F12 查看控制台详情', 'error');
+    isConnected = false;
+    updateUI();
+  };
+
+  ws.onclose = (e) => {
+    console.log('[Gemini Live] Closed:', e.code, e.reason);
+    if (isConnected) {
+      setStatus(`连接已断开 (code: ${e.code}${e.reason ? ' · ' + e.reason : ''})`, 'error');
+    } else if (e.code !== 1000) {
+      setStatus(`连接失败 (${e.code}) — 请检查 API Key 和网络`, 'error');
+    }
+    isConnected = false;
+    ws = null;
+    stopMic();
+    updateUI();
+  };
+}
+
+function handleServerMessage(data) {
+  // Setup complete
+  if (data.setupComplete !== undefined) {
+    isConnected = true;
+    setStatus(`已连接 · ${model.split('/')[1]}`, 'connected');
+    updateUI();
+    appendSystemMsg('✅ 连接成功！试着说 "Hello, let\'s practice English." 开始对话吧～');
+    return;
+  }
+
+  if (data.serverContent) {
+    const sc = data.serverContent;
+
+    if (sc.interrupted) {
+      finishAiMessage();
+      playbackQueue = [];
+      isPlaying = false;
+      return;
+    }
+
+    // modelTurn can contain audio inlineData and/or text parts
+    if (sc.modelTurn && sc.modelTurn.parts) {
+      for (const part of sc.modelTurn.parts) {
+        if (part.inlineData && part.inlineData.data) {
+          const mime = part.inlineData.mimeType || 'audio/pcm;rate=24000';
+          const rateMatch = mime.match(/rate=(\d+)/);
+          if (rateMatch) currentPlaybackSampleRate = parseInt(rateMatch[1]);
+          const pcmData = base64ToInt16(part.inlineData.data);
+          playbackQueue.push(pcmData);
+          if (!isPlaying) playNextChunk();
+        }
+        if (part.text) {
+          ensureAiMessage();
+          aiTextBuffer += part.text;
+          currentAiMsgEl.textContent = aiTextBuffer;
+          scrollTranscript();
+        }
+      }
+    }
+
+    // Gemini 3.1: outputTranscription field for text transcript of audio
+    if (sc.outputTranscription && sc.outputTranscription.text) {
+      ensureAiMessage();
+      aiTextBuffer += sc.outputTranscription.text;
+      currentAiMsgEl.textContent = aiTextBuffer;
+      scrollTranscript();
+    }
+
+    if (sc.turnComplete) {
+      finishAiMessage();
+    }
+  }
+}
+
+function disconnect() {
+  if (ws) { ws.close(); }
+  stopMic();
+  isConnected = false;
+  setStatus('已断开', '');
+  updateUI();
+}
+
+// ═══════════════════════════════════════════════════
+//  Audio Capture
+// ═══════════════════════════════════════════════════
+async function startMic() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: { ideal: 16000 } }, video: false });
+
+    // Try native 16kHz, else resample
+    const nativeSR = micStream.getAudioTracks()[0].getSettings().sampleRate || 44100;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: nativeSR });
+
+    micSource = audioCtx.createMediaStreamSource(micStream);
+    scriptProcessor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    const targetSR = 16000;
+    const ratio = nativeSR / targetSR; // e.g. 3 for 48kHz→16kHz
+
+    scriptProcessor.onaudioprocess = (e) => {
+      if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const input = e.inputBuffer.getChannelData(0);
+
+      // Simple decimation (good enough for speech)
+      const outLen = Math.floor(input.length / ratio);
+      const out = new Float32Array(outLen);
+      for (let i = 0; i < outLen; i++) {
+        out[i] = input[Math.floor(i * ratio)];
+      }
+
+      // Update waveform
+      updateWaveform(out);
+
+      // Float32 → Int16
+      const int16 = float32ToInt16(out);
+      const b64 = int16ToBase64(int16);
+
+      ws.send(JSON.stringify({
+        realtime_input: {
+          audio: { data: b64, mimeType: 'audio/pcm;rate=16000' }
+        }
+      }));
+    };
+
+    micSource.connect(scriptProcessor);
+    scriptProcessor.connect(audioCtx.destination);
+
+    isRecording = true;
+    document.getElementById('mic-btn').classList.add('recording');
+    setStatus('正在录音... 说话吧！', 'recording');
+  } catch (err) {
+    setStatus('麦克风权限被拒绝：' + err.message, 'error');
+  }
+}
+
+function stopMic() {
+  isRecording = false;
+  if (scriptProcessor) { scriptProcessor.disconnect(); scriptProcessor = null; }
+  if (micSource) { micSource.disconnect(); micSource = null; }
+  if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  document.getElementById('mic-btn').classList.remove('recording');
+  clearWaveform();
+  if (isConnected) setStatus(`已连接 · ${model.split('/')[1]}`, 'connected');
+}
+
+function toggleMic() {
+  if (!isConnected) { connect(); return; }
+  if (isRecording) {
+    stopMic();
+    // Signal end of turn
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ client_content: { turn_complete: true, turns: [] } }));
+    }
+  } else {
+    startMic();
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  Audio Playback
+// ═══════════════════════════════════════════════════
+let playbackCtx = null;
+let nextPlayTime = 0;
+
+function ensurePlaybackCtx() {
+  if (!playbackCtx || playbackCtx.state === 'closed') {
+    playbackCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: currentPlaybackSampleRate });
+    nextPlayTime = 0;
+  }
+}
+
+function playNextChunk() {
+  if (playbackQueue.length === 0) { isPlaying = false; return; }
+  isPlaying = true;
+  ensurePlaybackCtx();
+
+  const int16 = playbackQueue.shift();
+  const float32 = int16ToFloat32(int16);
+
+  const buf = playbackCtx.createBuffer(1, float32.length, currentPlaybackSampleRate);
+  buf.copyToChannel(float32, 0);
+
+  const src = playbackCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(playbackCtx.destination);
+
+  const now = playbackCtx.currentTime;
+  const startAt = Math.max(now, nextPlayTime);
+  src.start(startAt);
+  nextPlayTime = startAt + buf.duration;
+
+  src.onended = () => playNextChunk();
+}
+
+// ═══════════════════════════════════════════════════
+//  Conversions
+// ═══════════════════════════════════════════════════
+function float32ToInt16(f32) {
+  const int16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) {
+    const s = Math.max(-1, Math.min(1, f32[i]));
+    int16[i] = s < 0 ? s * 32768 : s * 32767;
+  }
+  return int16;
+}
+
+function int16ToFloat32(int16) {
+  const f32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
+  return f32;
+}
+
+function int16ToBase64(int16) {
+  const bytes = new Uint8Array(int16.buffer);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+function base64ToInt16(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Int16Array(bytes.buffer);
+}
+
+// ═══════════════════════════════════════════════════
+//  Waveform
+// ═══════════════════════════════════════════════════
+function updateWaveform(samples) {
+  const bars = document.querySelectorAll('.wave-bar');
+  const chunkSize = Math.floor(samples.length / NUM_BARS);
+  bars.forEach((bar, i) => {
+    let sum = 0;
+    for (let j = 0; j < chunkSize; j++) sum += Math.abs(samples[i * chunkSize + j] || 0);
+    const avg = sum / chunkSize;
+    const h = Math.max(3, Math.min(36, avg * 200));
+    bar.style.height = h + 'px';
+    bar.style.background = `hsl(${20 + avg * 200}, 80%, 60%)`;
+  });
+}
+
+function clearWaveform() {
+  document.querySelectorAll('.wave-bar').forEach(b => {
+    b.style.height = '3px';
+    b.style.background = 'var(--border2)';
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  Transcript
+// ═══════════════════════════════════════════════════
+function getTime() {
+  return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function ensureAiMessage() {
+  if (!currentAiMsgEl) {
+    hideEmptyState();
+    const msg = document.createElement('div');
+    msg.className = 'message ai';
+    msg.innerHTML = `
+      <div class="avatar">AI</div>
+      <div class="bubble">
+        <div class="bubble-meta">
+          <span class="bubble-name">Gemini</span>
+          <span class="bubble-time">${getTime()}</span>
+        </div>
+        <div class="bubble-text streaming" id="ai-text-${Date.now()}"></div>
+      </div>`;
+    document.getElementById('transcript').appendChild(msg);
+    currentAiMsgEl = msg.querySelector('.bubble-text');
+    aiTextBuffer = '';
+    scrollTranscript();
+  }
+}
+
+function finishAiMessage() {
+  if (currentAiMsgEl) {
+    currentAiMsgEl.classList.remove('streaming');
+    currentAiMsgEl = null;
+    aiTextBuffer = '';
+  }
+}
+
+function appendUserMsg(text) {
+  hideEmptyState();
+  const msg = document.createElement('div');
+  msg.className = 'message user';
+  msg.innerHTML = `
+    <div class="avatar">你</div>
+    <div class="bubble">
+      <div class="bubble-meta">
+        <span class="bubble-name">You</span>
+        <span class="bubble-time">${getTime()}</span>
+      </div>
+      <div class="bubble-text">${escapeHtml(text)}</div>
+    </div>`;
+  document.getElementById('transcript').appendChild(msg);
+  scrollTranscript();
+}
+
+function appendSystemMsg(text) {
+  const el = document.createElement('div');
+  el.style.cssText = 'text-align:center;font-size:13px;color:var(--text3);padding:8px;font-family:"IBM Plex Mono",monospace;';
+  el.textContent = text;
+  document.getElementById('transcript').appendChild(el);
+  scrollTranscript();
+}
+
+function hideEmptyState() {
+  const es = document.getElementById('empty-state');
+  if (es) es.remove();
+}
+
+function clearTranscript() {
+  const t = document.getElementById('transcript');
+  t.innerHTML = '<div class="empty-state" id="empty-state"><div class="empty-icon">🗣</div><div class="empty-title">准备好练习英语了吗？</div><div class="empty-desc">点击下方麦克风按钮开始说话，AI 会实时回应并纠正你的语法错误。</div></div>';
+  currentAiMsgEl = null;
+  aiTextBuffer = '';
+}
+
+function scrollTranscript() {
+  const t = document.getElementById('transcript');
+  t.scrollTop = t.scrollHeight;
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════════
+//  Topics
+// ═══════════════════════════════════════════════════
+const topicPrompts = {
+  'self-intro': "Let's practice self-introductions! Start by telling me your name, where you're from, and what you do. Try to speak for at least 1 minute!",
+  'daily-life': "Let's chat about your daily life! What did you do today? What's your usual morning routine?",
+  'travel': "Let's talk about travel! Have you been anywhere interesting recently, or is there a place you'd love to visit? Tell me all about it!",
+  'work': "Let's practice workplace English! Tell me about your job or studies. What kind of work do you do, and what challenges do you face?",
+  'news': "Let's discuss current events! Is there any news story that caught your attention recently? Share your thoughts!",
+  'debate': "Let's have a mini-debate! I'll give you a topic and you argue for it. Ready? Here's your topic: 'Working from home is better than working in an office.' Go!",
+  'storytelling': "Let's practice storytelling! Tell me about a memorable experience you've had — something funny, exciting, or surprising that happened to you.",
+  'interview': "Let's do a mock job interview in English! I'll be the interviewer. Tell me, what position are you applying for, and please start with 'Tell me about yourself.'"
+};
+
+function startTopic(topic) {
+  if (!isConnected) {
+    alert('请先连接 API，点击"连接"按钮');
+    return;
+  }
+  const prompt = topicPrompts[topic];
+  if (!prompt || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  // Send as text turn to kick off conversation
+  ws.send(JSON.stringify({
+    realtime_input: {
+      text: '[Topic Switch] ' + prompt
+    }
+  }));
+  appendSystemMsg(`📌 话题: ${topic}`);
+}
+
+// ═══════════════════════════════════════════════════
+//  Text Mode
+// ═══════════════════════════════════════════════════
+function setMode(mode) {
+  inputMode = mode;
+  const voiceBtn = document.getElementById('voice-mode-btn');
+  const textBtn = document.getElementById('text-mode-btn');
+  const micBtn = document.getElementById('mic-btn');
+  const wf = document.getElementById('waveform');
+  const textarea = document.getElementById('send-text-area');
+  const sendBtn = document.getElementById('send-btn');
+
+  if (mode === 'voice') {
+    voiceBtn.classList.add('active'); textBtn.classList.remove('active');
+    micBtn.style.display = 'flex'; wf.style.display = 'flex';
+    textarea.style.display = 'none'; sendBtn.style.display = 'none';
+    if (isRecording) stopMic();
+  } else {
+    textBtn.classList.add('active'); voiceBtn.classList.remove('active');
+    micBtn.style.display = 'none'; wf.style.display = 'none';
+    textarea.style.display = 'block'; sendBtn.style.display = 'flex';
+    stopMic();
+  }
+}
+
+function sendText() {
+  const ta = document.getElementById('send-text-area');
+  const text = ta.value.trim();
+  if (!text) return;
+  if (!isConnected) { connect(); return; }
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  appendUserMsg(text);
+  ws.send(JSON.stringify({
+    realtime_input: {
+      text: text
+    }
+  }));
+  ta.value = '';
+}
+
+document.getElementById('send-text-area').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+});
+
+// ═══════════════════════════════════════════════════
+//  UI Update
+// ═══════════════════════════════════════════════════
+function updateUI() {
+  const connectBtn = document.getElementById('connect-btn');
+  const disconnectBtn = document.getElementById('disconnect-btn');
+  const micBtn = document.getElementById('mic-btn');
+
+  if (isConnected) {
+    connectBtn.style.display = 'none';
+    disconnectBtn.style.display = 'inline-flex';
+    micBtn.classList.remove('disabled');
+  } else {
+    connectBtn.style.display = 'inline-flex';
+    disconnectBtn.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  Startup
+// ═══════════════════════════════════════════════════
+// Auto-load saved key
+const savedKey = localStorage.getItem('gemini_api_key');
+if (savedKey) document.getElementById('api-key-input').value = savedKey;
+</script>
+</body>
+</html>
